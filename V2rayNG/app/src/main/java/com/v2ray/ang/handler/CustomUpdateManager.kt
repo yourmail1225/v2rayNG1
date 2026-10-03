@@ -1,6 +1,5 @@
 package com.v2ray.ang.handler
 
-import com.v2ray.ang.dto.CheckUpdateResult
 import com.v2ray.ang.dto.UrlContentRequest
 import com.v2ray.ang.util.HttpUtil
 import com.v2ray.ang.util.JsonUtil
