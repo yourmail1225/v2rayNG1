@@ -161,3 +161,4 @@ jobs:
           tag: ${{ inputs.release_tag }}
           file_glob: true
           prerelease: true
+
