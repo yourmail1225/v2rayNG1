@@ -301,3 +301,45 @@ fun <T> SelectListDialog(
         containerColor = MaterialTheme.colorScheme.surface
     )
 }
+
+/**
+ * Custom update dialog that shows update available with download option
+ */
+@Composable
+fun CustomUpdateDialog(
+    version: String,
+    message: String,
+    onUpdate: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.title_update_available)) },
+        text = {
+            Column {
+                Text(
+                    text = "Version: $version",
+                    style = MaterialTheme.typography.bodyMedium
+                )
+                if (message.isNotEmpty()) {
+                    Spacer(modifier = Modifier.padding(8.dp))
+                    Text(
+                        text = message,
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = { onUpdate(); onDismiss() }) {
+                Text(stringResource(R.string.action_ok))
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text(stringResource(R.string.action_cancel))
+            }
+        },
+        containerColor = MaterialTheme.colorScheme.surface
+    )
+}
