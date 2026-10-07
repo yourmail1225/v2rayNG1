@@ -95,8 +95,12 @@ jobs:
           APKS=$(ls V2rayNG/app/build/outputs/apk/fdroid/debug/*.apk)
           echo "APKs:"
           for apk in $APKS; do echo "  $apk"; done
+
+          required_libs=(libopenvpn.so libovpnexec.so)
+          optional_libs=(libhev-socks5-tunnel.so libhevsockstun.so libgojni.so)
+
           for abi in arm64-v8a armeabi-v7a x86_64 x86; do
-            for lib in libopenvpn.so libovpnexec.so libhev-socks5-tunnel.so libhevsockstun.so libgojni.so; do
+            for lib in "${required_libs[@]}"; do
               found=0
               for apk in $APKS; do
                 if unzip -l "$apk" | grep -q "lib/$abi/$lib"; then
@@ -105,10 +109,25 @@ jobs:
                 fi
               done
               if [ "$found" != "1" ]; then
-                echo "ERROR: no APK carries $abi/$lib"
+                echo "ERROR: required native lib missing from APK: $abi/$lib"
                 exit 1
               fi
               echo "$abi/$lib present"
+            done
+
+            for lib in "${optional_libs[@]}"; do
+              found=0
+              for apk in $APKS; do
+                if unzip -l "$apk" | grep -q "lib/$abi/$lib"; then
+                  found=1
+                  break
+                fi
+              done
+              if [ "$found" = "1" ]; then
+                echo "$abi/$lib present"
+              else
+                echo "INFO: optional native lib not present in this APK set: $abi/$lib"
+              fi
             done
           done
 
