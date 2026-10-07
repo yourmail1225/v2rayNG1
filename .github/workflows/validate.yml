@@ -91,7 +91,7 @@ jobs:
 
     - name: Upload Play Store debug APK
       if: ${{ success() }}
-      uses: actions/upload-artifact@v7
+      uses: actions/upload-artifact@v6
       with:
         name: playstore-debug-apk
         path: ${{ github.workspace }}/V2rayNG/app/build/outputs/apk/playstore/debug/*.apk
