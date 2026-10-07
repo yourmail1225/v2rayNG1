@@ -1,4 +1,4 @@
-name: Build APK
+﻿name: Build APK
 
 on:
   workflow_dispatch:
@@ -86,14 +86,6 @@ jobs:
         distribution: 'temurin'
         java-version: '21'
 
-    - name: Decode Keystore
-      uses: timheuer/base64-to-file@v2.0.0
-      id: android_keystore
-      with:
-        fileName: "android_keystore.jks"
-        encodedString: ${{ secrets.APP_KEYSTORE_BASE64 }}
-
-    - name: Build APK
       run: |
         cd ${{ github.workspace }}/V2rayNG
         echo "sdk.dir=${ANDROID_HOME}" > local.properties
@@ -160,3 +152,7 @@ jobs:
           tag: ${{ inputs.release_tag }}
           file_glob: true
           prerelease: true
+
+
+
+

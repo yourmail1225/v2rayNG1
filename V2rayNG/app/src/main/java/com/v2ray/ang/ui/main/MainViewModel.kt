@@ -138,7 +138,12 @@ class MainViewModel(
 
             MainServiceEvent.StateStopSuccess -> updateRunningState(false)
             is MainServiceEvent.StateLockDenied -> {
-                _uiState.update { it.copy(lockNotice = event.message) }
+                // Prefer the panel-published expiry notice for the running
+                // subscription so the customer sees the account-specific message.
+                val custom = uiState.value.selectedGuid
+                    ?.let { dataSource.decodeServerConfig(it)?.subscriptionId }
+                    ?.let { expiryNoticeForSubscription(it) }
+                _uiState.update { it.copy(lockNotice = custom ?: event.message) }
             }
 
             is MainServiceEvent.MeasureDelayResult -> {
@@ -275,6 +280,7 @@ class MainViewModel(
             }
             MainAction.CheckAppUpdate -> checkAppUpdate()
             MainAction.DownloadAppUpdate -> downloadAppUpdate()
+            MainAction.CheckExpiryNotice -> checkExpiryNotices()
             MainAction.DismissAppUpdate -> {
                 _uiState.update { it.copy(appUpdateNotice = null) }
             }
@@ -578,6 +584,56 @@ class MainViewModel(
     }
 
     /**
+     * Builds the panel-published expiry notice text for a subscription when its group
+     * lock is engaged and the account is already refused (expired or over its data
+     * limit) or is within the published lead time of its expiry date. The subscription
+     * URL is appended for a link back to the row. Returns null when nothing should be
+     * surfaced, so callers fall back to their own message.
+     */
+    private fun expiryNoticeForSubscription(subscriptionId: String): String? {
+        val sub = dataSource.getSubscriptionItem(subscriptionId) ?: return null
+        val message = sub.expiryMessage
+        if (message.isBlank()) return null
+        val lock = dataSource.decodeGroupLock(subscriptionId)
+        val nowMinute = LockEvaluator.todayEpochMinute()
+        val denied =
+            (lock.expiryEpochMinute > 0L && nowMinute >= lock.expiryEpochMinute) ||
+                (lock.dataLimitBytes > 0L && lock.usedBytes >= lock.dataLimitBytes)
+        val leadDays = sub.expiryMessageDays
+        val nearExpiry =
+            leadDays > 0 && lock.expiryEpochMinute > 0L &&
+                (lock.expiryEpochMinute - nowMinute) / (24 * 60) <= leadDays
+        if (!denied && !nearExpiry) return null
+        val url = sub.url.trim()
+        return if (url.isNotEmpty()) "$message\n\n$url" else message
+    }
+
+    /**
+     * Surfaces the first subscription-level expiry notice the panel published. Runs on
+     * every foreground open so a customer sees the current account state even when the
+     * device only bounces back from another app; an already-open notice is not replaced.
+     */
+    private fun checkExpiryNotices() {
+        if (_uiState.value.lockNotice != null) return
+        viewModelScope.launch {
+            try {
+                val notice = withContext(ioDispatcher) {
+                    dataSource.getSubscriptions()
+                        .asSequence()
+                        .filter { it.guid.isNotBlank() }
+                        .mapNotNull { expiryNoticeForSubscription(it.guid) }
+                        .firstOrNull()
+                }
+                if (notice != null) _uiState.update { it.copy(lockNotice = notice) }
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (e: Exception) {
+                LogUtil.e(AppConfig.TAG, "Failed to check subscription expiry notices", e)
+            }
+        }
+    }
+
+    /**
      * Downloads the published APK to the app's own cache so the installer can be
      * handed a content:// uri through the existing FileProvider. The Activity starts
      * the installer; the file is produced here off the main thread.
@@ -724,11 +780,19 @@ class MainViewModel(
 
     /**
      * Shows the lock-denied notice dialog for [denied] without starting the service.
+     * A panel-published expiry notice for the refused profile's subscription takes
+     * precedence; otherwise the generic localized refusal text is shown.
      */
-    fun notifyLockDenied(denied: LockEvaluator.Decision.Denied) {
+    fun notifyLockDenied(
+        denied: LockEvaluator.Decision.Denied,
+        guid: String? = uiState.value.selectedGuid
+    ) {
+        val custom = guid
+            ?.let { dataSource.decodeServerConfig(it)?.subscriptionId }
+            ?.let { expiryNoticeForSubscription(it) }
         _uiState.update {
             it.copy(
-                lockNotice = LockDeniedMessage.resolve(
+                lockNotice = custom ?: LockDeniedMessage.resolve(
                     localizedContext,
                     denied.reason,
                     denied.scope

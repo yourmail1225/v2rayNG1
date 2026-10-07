@@ -15,5 +15,9 @@ data class SubscriptionItem(
     var userAgent: String? = null,
     var requestHeaders: String? = null,
     var password: String = "",
+    // Optional message the panel may publish for this subscription when expiry is near
+    var expiryMessage: String = "",
+    // Lead time in days before expiry to surface expiryMessage; 0 disables lead-time checks
+    var expiryMessageDays: Int = 0,
 )
 

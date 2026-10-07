@@ -27,7 +27,12 @@ object UpdateCheckerManager {
      * never blocks the app from starting.
      */
     suspend fun checkPanelUpdate(): AppUpdateNotice? = withContext(Dispatchers.IO) {
-        if (!ActivationManager.isActivated()) return@withContext null
+        // Allow checking the panel's published update.json even when the device
+        // has not been activated. A missing or unreachable URL is treated as
+        // "no update" so this never blocks startup.
+        // Previously the check returned null when not activated, which prevented
+        // owners from publishing an update notice visible before activation.
+        // (Activation gating was intentional but made update delivery confusing.)
         val url = ActivationManager.repoRootUrl() + PANEL_UPDATE_FILE
         val response = try {
             HttpUtil.getUrlContent(UrlContentRequest(url = url, timeout = 5000))

@@ -171,5 +171,11 @@ sealed interface MainAction {
     data object DownloadAppUpdate : MainAction
     data object DismissAppUpdate : MainAction
 
+    /**
+     * Surfaces the panel-published per-subscription expiry notice, if any, as the
+     * lock notice on every foreground open of the main screen.
+     */
+    data object CheckExpiryNotice : MainAction
+
     data object LocateHandled : MainAction
 }

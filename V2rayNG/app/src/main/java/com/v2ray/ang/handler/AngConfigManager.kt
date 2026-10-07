@@ -822,6 +822,13 @@ object AngConfigManager {
                 if (lockedParsed.password.isNotEmpty()) {
                     MmkvManager.applySubscriptionPassword(it.guid, lockedParsed.password)
                 }
+                if (lockedParsed.expiryMessage.isNotEmpty()) {
+                    MmkvManager.applySubscriptionExpiryNotice(
+                        it.guid,
+                        lockedParsed.expiryMessage,
+                        lockedParsed.expiryMessageDays
+                    )
+                }
                 LogUtil.i(AppConfig.TAG, "Subscription updated: ${it.subscription.remarks}, $count configs")
                 return SubscriptionUpdateResult(
                     configCount = count,

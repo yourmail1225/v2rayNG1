@@ -135,6 +135,14 @@ class MainActivity : HelperBaseComponentActivity() {
         mainViewModel.onAction(MainAction.CheckAppUpdate)
     }
 
+    override fun onStart() {
+        super.onStart()
+        // Re-surface the panel-published per-subscription expiry notice on every
+        // foreground open; the ViewModel guards against replacing a notice that is
+        // already showing.
+        mainViewModel.onAction(MainAction.CheckExpiryNotice)
+    }
+
     /**
      * The ViewModel owns the password gate and the update download, but the launchers,
      * the file picker, and the installer belong to the Activity.
@@ -449,7 +457,7 @@ class MainActivity : HelperBaseComponentActivity() {
     private fun setSelectServer(guid: String) {
         val denied = mainViewModel.lockDeniedReasonFor(guid)
         if (denied != null) {
-            mainViewModel.notifyLockDenied(denied)
+            mainViewModel.notifyLockDenied(denied, guid)
             return
         }
         val selected = mainViewModel.uiState.value.selectedGuid

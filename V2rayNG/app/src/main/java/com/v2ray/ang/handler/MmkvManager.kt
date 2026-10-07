@@ -853,6 +853,25 @@ object MmkvManager {
         subStorage.encode(subscriptionId, JsonUtil.toJson(sub))
     }
 
+    /**
+     * Stores the expiry notice the panel publishes in a locked-package subscription
+     * without touching the rest of the item, so a refresh can update the message and
+     * its lead time independently of the caller's cached copy.
+     *
+     * @param subscriptionId The subscription ID; blank means no subscription to update.
+     * @param message The notice text to show near expiry; blank is ignored so the
+     *                message already configured on the item is kept.
+     * @param days The lead time in whole days; 0 disables the lead-time check.
+     */
+    fun applySubscriptionExpiryNotice(subscriptionId: String, message: String, days: Int) {
+        if (subscriptionId.isBlank() || message.isBlank()) return
+        val sub = decodeSubscription(subscriptionId) ?: return
+        if (sub.expiryMessage == message && sub.expiryMessageDays == days) return
+        sub.expiryMessage = message
+        sub.expiryMessageDays = days
+        subStorage.encode(subscriptionId, JsonUtil.toJson(sub))
+    }
+
     private fun groupLockKey(subscriptionId: String): String {
         return "LOCK_${getSubscriptionId(subscriptionId)}"
     }

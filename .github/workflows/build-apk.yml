@@ -1,4 +1,4 @@
-name: Build APK
+﻿name: Build APK
 
 on:
   workflow_dispatch:
@@ -12,16 +12,6 @@ jobs:
         with:
           submodules: recursive
           fetch-depth: 0
-
-      - name: Initialize nested submodules
-        run: |
-          set -euo pipefail
-          git submodule sync --recursive
-          git submodule update --init --recursive --force
-          test -d hev-socks5-tunnel/third-part/yaml
-          test -d hev-socks5-tunnel/third-part/lwip
-          test -d hev-socks5-tunnel/third-part/hev-task-system
-          find hev-socks5-tunnel/third-part -maxdepth 2 -type d | sort
 
       - name: Set up JDK 21
         uses: actions/setup-java@v4
@@ -43,63 +33,41 @@ jobs:
           echo "ANDROID_NDK_HOME=$NDK_DIR" >> "$GITHUB_ENV"
           echo "ANDROID_NDK_ROOT=$NDK_DIR" >> "$GITHUB_ENV"
 
-      - name: Fetch and verify AndroidLibXrayLite AAR
-        run: |
-          mkdir -p V2rayNG/app/libs
-          
-          # Download official release asset from GitHub API
-          DOWNLOAD_URL=$(curl -s https://api.github.com/repos/2dust/AndroidLibXrayLite/releases/latest | grep "browser_download_url.*aar" | cut -d : -f 2,3 | tr -d '\" ' | head -n 1)
-          
-          if [ -z "$DOWNLOAD_URL" ]; then
-            DOWNLOAD_URL="https://github.com/2dust/AndroidLibXrayLite/releases/download/v25.2.21/AndroidLibXrayLite.aar"
-          fi
-          
-          echo "Downloading from: $DOWNLOAD_URL"
-          curl -L -f -o V2rayNG/app/libs/AndroidLibXrayLite.aar "$DOWNLOAD_URL"
-          
-          echo "Verifying downloaded AAR file:"
-          ls -lh V2rayNG/app/libs/AndroidLibXrayLite.aar
-          file V2rayNG/app/libs/AndroidLibXrayLite.aar
+      - name: Fetch AndroidLibXrayLite AAR
 
-      - name: Compile Tun library
-        run: |
-          set -euo pipefail
-          chmod +x compile-hevtun.sh
-          ./compile-hevtun.sh
 
-      - name: Copy HEV tun libraries into app jniLibs
-        run: |
-          set -euo pipefail
-          # compile-hevtun.sh stages libhev-socks5-tunnel.so (in-process JNI for the
-          # hev tun mode of TProxyService) and libhevsockstun.so (root-mode engine)
-          # under the repository-root libs/. The app module packages jniLibs from
-          # V2rayNG/app/libs, so a missing copy means the APK cannot load the hev
-          # tunnel and VPN mode crashes with UnsatisfiedLinkError. Fail hard.
-          for abi in arm64-v8a armeabi-v7a x86_64 x86; do
-            test -f "libs/$abi/libhev-socks5-tunnel.so"
-            test -f "libs/$abi/libhevsockstun.so"
-            mkdir -p "V2rayNG/app/libs/$abi"
-            cp "libs/$abi/libhev-socks5-tunnel.so" "V2rayNG/app/libs/$abi/"
-            cp "libs/$abi/libhevsockstun.so" "V2rayNG/app/libs/$abi/"
-          done
-          echo "HEV tun binaries ready:"
-          find V2rayNG/app/libs -name 'libhev*' -exec ls -lh {} \;
 
-      - name: Fetch OpenVPN engine binaries
-        run: |
-          set -euo pipefail
 
-          # libopenvpn.so (the real engine) and libovpnexec.so (the exec shim)
-          # come from the gpl-licensed ics-openvpn F-Droid release of
-          # de.blinkt.openvpn. The shim dlopens libopenvpn.so via
-          # LD_LIBRARY_PATH=nativeLibraryDir at runtime.
-          curl --fail --location --retry 5 --retry-all-errors \
-            -o /tmp/ics-openvpn.apk \
-            https://f-droid.org/repo/de.blinkt.openvpn_220.apk
 
-          # Abort on a truncated download (the repo regularly throttles it).
-          SIZE=$(stat -c %s /tmp/ics-openvpn.apk)
-          if [ "$SIZE" -lt 30000000 ]; then
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
             echo "OpenVPN APK download is only ${SIZE} bytes, refusing to build"
             exit 1
           fi
@@ -168,3 +136,22 @@ jobs:
         with:
           name: v2rayNG-OpenVPN-Debug-APK
           path: V2rayNG/app/build/outputs/apk/**/debug/*.apk
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

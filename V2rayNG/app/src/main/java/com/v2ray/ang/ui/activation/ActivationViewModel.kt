@@ -72,9 +72,10 @@ class ActivationViewModel(application: Application) : BaseViewModel(application)
     private suspend fun importSubscription(code: String, row: String) {
         val subscriptionId = AppConfig.DEFAULT_SUBSCRIPTION_ID
         val importedCount = withContext(Dispatchers.IO) {
-            // The row's shared quota is copied onto every entry, so the first one carries
-            // the group's expiry and limit; a row with no lock block leaves both at 0.
-            val quota = LockedPackage.parse(row).entries.firstOrNull()
+            // Parse the locked-package block once so we can extract quota and any
+            // optional expiry message the panel included.
+            val parsed = LockedPackage.parse(row)
+            val quota = parsed.entries.firstOrNull()
             val published = RowActivation.read(row)
             // The default group is shared, so a re-activation of a different code would
             // otherwise inherit the previous customer's counter. The row carries the
@@ -96,6 +97,8 @@ class ActivationViewModel(application: Application) : BaseViewModel(application)
                     url = ActivationManager.rowUrl(code),
                     autoUpdate = true,
                     updateInterval = AppConfig.SUBSCRIPTION_ACTIVATED_UPDATE_INTERVAL_MINUTES,
+                    expiryMessage = parsed.expiryMessage,
+                    expiryMessageDays = parsed.expiryMessageDays,
                 )
             )
             AngConfigManager.importBatchConfig(row, subscriptionId, append = false).first

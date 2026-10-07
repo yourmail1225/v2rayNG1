@@ -31,6 +31,8 @@ object LockedPackage {
         val entries: List<LockedEntry>,
         val remaining: String,
         val password: String = "",
+        val expiryMessage: String = "",
+        val expiryMessageDays: Int = 0,
     )
 
     fun encode(entries: List<LockedEntry>): String {
@@ -58,8 +60,14 @@ object LockedPackage {
             }
         }
 
-        val (entries, password) = parseBlock(inBlock.toString())
-        return Parsed(entries = entries, remaining = remaining.toString(), password = password)
+        val parsedBlock = parseBlock(inBlock.toString())
+        return Parsed(
+            entries = parsedBlock.entries,
+            remaining = remaining.toString(),
+            password = parsedBlock.password,
+            expiryMessage = parsedBlock.expiryMessage,
+            expiryMessageDays = parsedBlock.expiryMessageDays,
+        )
     }
 
     /**
@@ -71,24 +79,26 @@ object LockedPackage {
      * surrounding text" case rather than a fault, and plain JVM unit tests have no
      * android.util.Log to report to.
      */
-    private fun parseBlock(json: String): Pair<List<LockedEntry>, String> {
-        if (json.isBlank()) return emptyList<LockedEntry>() to ""
+    private fun parseBlock(json: String): Parsed {
+        if (json.isBlank()) return Parsed(entries = emptyList(), remaining = "", password = "", expiryMessage = "", expiryMessageDays = 0)
         return try {
             val element = JsonParser.parseString(json)
             when {
-                element.isJsonArray -> parseEntries(element.asJsonArray) to ""
+                element.isJsonArray -> Parsed(entries = parseEntries(element.asJsonArray), remaining = "", password = "", expiryMessage = "", expiryMessageDays = 0)
                 element.isJsonObject -> parseObject(element.asJsonObject)
-                else -> emptyList<LockedEntry>() to ""
+                else -> Parsed(entries = emptyList(), remaining = "", password = "", expiryMessage = "", expiryMessageDays = 0)
             }
         } catch (e: Exception) {
-            emptyList<LockedEntry>() to ""
+            Parsed(entries = emptyList(), remaining = "", password = "", expiryMessage = "", expiryMessageDays = 0)
         }
     }
 
-    private fun parseObject(obj: JsonObject): Pair<List<LockedEntry>, String> {
+    private fun parseObject(obj: JsonObject): Parsed {
         val password = obj.lockString("password")
         val sharedExpiry = obj.lockLong("expiryEpochMinute")
         val sharedLimit = obj.lockLong("dataLimitBytes")
+        val expiryMessage = obj.lockString("expiryMessage")
+        val expiryMessageDays = obj.lockLong("expiryMessageDays").toInt()
         val entriesElement = obj.get("entries")
         val entries = if (entriesElement != null && entriesElement.isJsonArray) {
             parseEntries(entriesElement.asJsonArray).map { entry ->
@@ -100,7 +110,7 @@ object LockedPackage {
         } else {
             emptyList()
         }
-        return entries to password
+        return Parsed(entries = entries, remaining = "", password = password, expiryMessage = expiryMessage, expiryMessageDays = expiryMessageDays)
     }
 
     private fun parseEntries(array: JsonArray): List<LockedEntry> =
