@@ -1,6 +1,6 @@
 ﻿name: Build APK
 
-on:
+'on':
   workflow_dispatch:
 
 jobs:
@@ -20,11 +20,9 @@ jobs:
           java-version: '21'
 
       - name: Setup Android SDK & NDK
+        shell: bash
         run: |
           set -euo pipefail
-          # GitHub-hosted runners ship a fully licensed Android SDK and NDK. The
-          # third-party setup-android action regressed (it tries to install the now
-          # removed legacy 'tools' SDK package), so export the preinstalled tools.
           NDK_DIR=$(ls -1d "$ANDROID_HOME"/ndk/* 2>/dev/null | head -n1)
           test -n "$NDK_DIR"
           echo "Using Android SDK: $ANDROID_HOME"
@@ -34,43 +32,27 @@ jobs:
           echo "ANDROID_NDK_ROOT=$NDK_DIR" >> "$GITHUB_ENV"
 
       - name: Fetch AndroidLibXrayLite AAR
+        shell: bash
+        run: |
+          set -euo pipefail
+          pushd AndroidLibXrayLite >/dev/null
+          CURRENT_TAG=$(git describe --tags --abbrev=0 || git rev-parse --short HEAD)
+          echo "Current tag in this repo: $CURRENT_TAG"
+          echo "CURRENT_TAG=$CURRENT_TAG" >> "$GITHUB_ENV"
+          popd >/dev/null
 
+          mkdir -p V2rayNG/app/libs
+          curl -fL "https://github.com/2dust/AndroidLibXrayLite/releases/download/${CURRENT_TAG}/libv2ray.aar" \
+            -o "V2rayNG/app/libs/libv2ray.aar"
+          ls -lh "V2rayNG/app/libs/libv2ray.aar"
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-            echo "OpenVPN APK download is only ${SIZE} bytes, refusing to build"
-            exit 1
-          fi
+      - name: Fetch OpenVPN binaries
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fL "https://github.com/schwabe/ics-openvpn/releases/download/v0.7.68/ics-openvpn-0.7.68.apk" \
+            -o /tmp/ics-openvpn.apk
+          test -s /tmp/ics-openvpn.apk
 
           rm -rf /tmp/ics-apk
           mkdir -p /tmp/ics-apk
@@ -78,12 +60,10 @@ jobs:
 
           for abi in arm64-v8a armeabi-v7a x86_64 x86; do
             mkdir -p "V2rayNG/app/libs/$abi"
-            cp "/tmp/ics-apk/lib/$abi/libopenvpn.so"  "V2rayNG/app/libs/$abi/"
+            cp "/tmp/ics-apk/lib/$abi/libopenvpn.so" "V2rayNG/app/libs/$abi/"
             cp "/tmp/ics-apk/lib/$abi/libovpnexec.so" "V2rayNG/app/libs/$abi/"
           done
 
-          # Pre-API-28 fallback shims ("exec" and dlopen are unsupported in
-          # nativeLibraryDir); kept for the app-side copy fallback.
           mkdir -p "V2rayNG/app/src/main/assets"
           cp /tmp/ics-apk/assets/pie_openvpn.* "V2rayNG/app/src/main/assets/"
 
@@ -109,6 +89,7 @@ jobs:
           ./gradlew :app:testPlaystoreDebugUnitTest :app:compilePlaystoreDebugKotlin :app:assemblePlaystoreDebug --no-daemon
 
       - name: Verify native libraries inside APK
+        shell: bash
         run: |
           set -euo pipefail
           APKS=$(ls V2rayNG/app/build/outputs/apk/fdroid/debug/*.apk)
@@ -136,7 +117,6 @@ jobs:
         with:
           name: v2rayNG-OpenVPN-Debug-APK
           path: V2rayNG/app/build/outputs/apk/**/debug/*.apk
-
 
 
 
