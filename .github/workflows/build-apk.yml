@@ -1,4 +1,4 @@
-﻿name: Build APK
+name: Build APK
 
 'on':
   workflow_dispatch:
@@ -132,7 +132,7 @@ jobs:
           done
 
       - name: Upload APK Artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: v2rayNG-OpenVPN-Debug-APK
           path: V2rayNG/app/build/outputs/apk/**/debug/*.apk
